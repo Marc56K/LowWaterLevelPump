@@ -5,7 +5,8 @@
 struct RcData
 {
     int sensor_value = 0;
-    bool relay_active = false;
+    bool relay_is_on = false;
+    uint16_t relay_switch_count = 0;
 };
 
 class Sender

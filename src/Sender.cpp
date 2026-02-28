@@ -16,7 +16,7 @@ void Sender::init()
 void Sender::send(const RcData& data)
 {
     unsigned long now = millis();
-    bool data_changed = _last_data.relay_active != data.relay_active;
+    bool data_changed = _last_data.relay_is_on != data.relay_is_on || _last_data.relay_switch_count != data.relay_switch_count;
     unsigned long interval = data_changed ? RC433_MIN_SEND_INTERVAL_IN_SEC : RC433_MAX_SEND_INTERVAL_IN_SEC;
  
     if (_last_send > now || (now - _last_send) > interval * 1000)
@@ -25,7 +25,8 @@ void Sender::send(const RcData& data)
         msg += String("\"id\":\"P") + String(RC433_DEVICE_ID) + String("\",");
         msg += String("\"t\":") + String(millis() / 1000) + ',';
         msg += String("\"s\":") + String(data.sensor_value) + ',';
-        msg += String("\"r\":") + String(data.relay_active) + '}';
+        msg += String("\"c\":") + String(data.relay_switch_count) + ',';
+        msg += String("\"r\":") + String(data.relay_is_on) + '}';
         if (!_rc433_sender.send((uint8_t *)msg.c_str(), msg.length()) || !_rc433_sender.waitPacketSent())
         {
             Serial.println("sending data failed");

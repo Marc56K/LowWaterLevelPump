@@ -53,15 +53,16 @@ void loop()
   Serial.println(sensor_value);
 
   if (sensor_value < PUMP_START_SENSOR_VALUE)
-    relay.active(true);
+    relay.request(true);
 
   if (sensor_value > PUMP_STOP_SENSOR_VALUE)
-    relay.active(false);
+    relay.request(false);
 
   RcData data;
   data.sensor_value = sensor_value;
-  data.relay_active = relay.isActive();
+  data.relay_is_on = relay.isOn();
+  data.relay_switch_count = relay.getSwitchCount();
   sender.send(data);
 
-  delay(100);
+  delay(500);
 }

@@ -1,11 +1,5 @@
 #include "Relay.h"
 
-void handleTimeOverflow(unsigned long now, unsigned long &t)
-{
-    if (now < t)
-        t = 0;
-}
-
 void Relay::init()
 {
     pinMode(RELAY_PIN, INPUT);
@@ -14,56 +8,53 @@ void Relay::init()
 void Relay::update()
 {
     unsigned long now_ms = millis();
-    handleTimeOverflow(now_ms, _last_update_ms);
-    handleTimeOverflow(now_ms, _last_switch_ms);
-
-    unsigned long delta_t = now_ms - _last_update_ms;
-    _last_update_ms = now_ms;
+    
+    auto relay_state_sec = (now_ms - _last_switch_ms) / 1000;
 
     if (_relay_is_on)
     {
-        _on_duration_ms += delta_t;
+        if (relay_state_sec > MAX_PUMP_ON_IN_SEC)
+        {
+            trySwitchRelay(now_ms, false);
+        }
+        else if (relay_state_sec > MIN_PUMP_ON_IN_SEC)
+        {
+            trySwitchRelay(now_ms, _requested_on);
+        }
     }
-
-    if (_cooldown_duration_ms > 0)
+    else if (relay_state_sec > MIN_PUMP_OFF_IN_SEC)
     {
-        _cooldown_duration_ms -= min(_cooldown_duration_ms, delta_t);
-    }
-
-    if (_cooldown_duration_ms == 0)
-    {
-        switchRelay(now_ms, _requested_on);
-    }
-
-    if (_relay_is_on && (_on_duration_ms / 1000) > MAX_PUMP_DURATION_IN_SEC)
-    {
-        Serial.println("relay cooldown");
-        switchRelay(now_ms, false);
-        _cooldown_duration_ms = 1000ul * PUMP_COOL_DOWN_IN_SEC;
+        trySwitchRelay(now_ms, _requested_on);
     }
 }
 
-void Relay::active(bool on)
+void Relay::request(bool on)
 {
     _requested_on = on;
     update();
 }
 
-bool Relay::isActive()
+bool Relay::isOn() const
 {
-    return _requested_on;
+    return _relay_is_on;
 }
 
-void Relay::switchRelay(unsigned long now, bool on)
+uint16_t Relay::getSwitchCount() const
 {
-    if (on != _relay_is_on)
+    return _relay_switch_count;
+}
+
+void Relay::trySwitchRelay(unsigned long now_ms, bool on)
+{
+    if (_relay_is_on != on)
     {
-        _last_switch_ms = now;
+        _last_switch_ms = now_ms;
         _relay_is_on = on;
+        ++_relay_switch_count;
+
         if (on)
         {
             Serial.println("relay on");
-            _on_duration_ms = 0;
             pinMode(RELAY_PIN, OUTPUT);
             digitalWrite(RELAY_PIN, RELAY_ACTIVE);
         }
